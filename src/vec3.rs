@@ -84,7 +84,7 @@ impl Sub for & Vector3 {
 
     fn sub(self, other: Self) -> Vector3 {
         Vector3 {
-            data: [self.x() - other.x(), self.y() - other.y(), self.z() - self.z()]
+            data: [self.x() - other.x(), self.y() - other.y(), self.z() - other.z()]
         }
     }
 }
@@ -94,7 +94,7 @@ impl Sub for Vector3 {
     
     fn sub(self, other: Self) -> Self {
         Self {
-            data: [self.x() - other.x(), self.y() - other.y(), self.z() - self.z()]
+            data: [self.x() - other.x(), self.y() - other.y(), self.z() - other.z()]
         }
     }
 }

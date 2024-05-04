@@ -23,7 +23,7 @@ const PPM_MAX_COLOUR : i32 = 255;
 const TO_COLOUR : f64 = 255.999;
 
 fn print_ppm_header(ppm_format : &str, image_height : i32, image_width : i32, ppm_max_colour : i32) {
-    println!("{0}{1} {2}\n{3}", ppm_format, image_height, image_width, ppm_max_colour);
+    println!("{0}{1} {2}\n{3}", ppm_format, image_width, image_height, ppm_max_colour);
 }
 
 fn ray_colour(ray: & Ray) -> Colour{
@@ -37,10 +37,10 @@ fn main() {
     let camera_center : Point3 = Point3::build(0.0, 0.0, 0.0);
     
     let viewport_width_vector = Vector3::build(VIEWPORT_WIDTH, 0.0, 0.0);
-    let viewport_height_vector = Vector3::build(0.0, VIEWPORT_HEIGHT, 0.0);
+    let viewport_height_vector = Vector3::build(0.0, -VIEWPORT_HEIGHT, 0.0);
 
     let pixel_delta_width = &viewport_width_vector / &(IMAGE_WIDTH as f64);
-    let pixel_delta_height = &viewport_height_vector / &(IMAGE_WIDTH as f64);
+    let pixel_delta_height = &viewport_height_vector / &(IMAGE_HEIGHT as f64);
 
     let viewport_upper_left: Vector3 = 
         &camera_center 
