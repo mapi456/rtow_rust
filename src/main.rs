@@ -1,4 +1,5 @@
 use common::colour::Colour;
+use common::interval::Interval;
 use common::ray::Ray;
 use common::vec3::{Point3, Vector3};
 use primitive::hittable::{HitRecord, Hittable};
@@ -7,6 +8,7 @@ use primitive::sphere::Sphere;
 
 mod common;
 mod primitive;
+mod engine;
 
 const ASPECT_RATIO : f64 = 16.0 / 9.0;
 
@@ -29,7 +31,7 @@ fn print_ppm_header(ppm_format : &str, image_height : i32, image_width : i32, pp
 }
 
 fn ray_colour(ray: & Ray, world: & dyn Hittable) -> Colour{
-    let (hit_anything, hit_rec) = world.hit(ray, 0.0, f64::INFINITY);
+    let (hit_anything, hit_rec) = world.hit(ray, &Interval::build(0.0, f64::INFINITY));
 
     if hit_anything {
         let normal = hit_rec.expect("ray_colour: Hit reported, but hit record missing.")

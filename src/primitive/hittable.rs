@@ -1,4 +1,4 @@
-use crate::common::{ray::Ray, vec3::{dot_product, Point3, Vector3}};
+use crate::common::{interval::Interval, ray::Ray, vec3::{dot_product, Point3, Vector3}};
 
 // static mut BACKFACES: i32 = 0;
 
@@ -29,5 +29,5 @@ impl HitRecord {
 }
 
 pub trait Hittable {
-    fn hit(& self, ray: & Ray, t_min: f64, t_max: f64) -> (bool, Option<HitRecord>);
+    fn hit(& self, ray: & Ray, ray_t: & Interval) -> (bool, Option<HitRecord>);
 }

@@ -1,5 +1,7 @@
 use std::vec;
 
+use crate::common::interval::Interval;
+
 use super::hittable::{HitRecord, Hittable};
 
 pub struct HittableList {
@@ -27,13 +29,13 @@ impl HittableList {
 }   
 
 impl Hittable for HittableList {
-    fn hit(& self, ray: & crate::common::ray::Ray, t_min: f64, t_max: f64) -> (bool, Option<super::hittable::HitRecord>) {
+    fn hit(& self, ray: & crate::common::ray::Ray, ray_t: & Interval) -> (bool, Option<super::hittable::HitRecord>) {
         let mut hit_rec: Option<HitRecord> = None;
         let mut hit_anything = false;
-        let mut closest_t = t_max;
+        let mut closest_t = ray_t.max();
 
         for object in self.objects.iter() {
-            let (hit, temp_rec) = object.hit(ray, t_min, closest_t);
+            let (hit, temp_rec) = object.hit(ray, &Interval::build(ray_t.min(), closest_t));
             if hit { 
                 let rec_val = temp_rec.expect("HittableList.hit(): hit registered, but no record available");
                 closest_t = (&rec_val).t;
