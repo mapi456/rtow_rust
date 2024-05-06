@@ -1,5 +1,6 @@
-use crate::TO_COLOUR;
 use super::vec3::Vector3;
+
+const TO_COLOUR : f64 = 255.999;
 
 pub type Colour = Vector3;
 

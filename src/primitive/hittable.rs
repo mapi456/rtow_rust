@@ -10,6 +10,10 @@ pub struct HitRecord {
 }
 
 impl HitRecord {
+    pub fn normal(&self) -> Vector3 {
+        self.normal.clone().expect("HitRecord: normal requested, but no normal found.")
+    }
+
     pub fn set_face_normal(&mut self, ray: & Ray, outward_normal: & Vector3) {
         // TODO: assert that outward_normal is unit length (within margin)
 

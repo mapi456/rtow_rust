@@ -39,5 +39,5 @@ impl Interval {
     }
 }
 
-static EMPTY: Interval = Interval{min: f64::INFINITY, max: f64::NEG_INFINITY};
-static UNIVERSE: Interval = Interval{min: f64::NEG_INFINITY, max: f64::INFINITY};
+const EMPTY: Interval = Interval{min: f64::INFINITY, max: f64::NEG_INFINITY};
+const UNIVERSE: Interval = Interval{min: f64::NEG_INFINITY, max: f64::INFINITY};
