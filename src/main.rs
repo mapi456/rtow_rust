@@ -15,6 +15,8 @@ mod engine;
 // WINDOW
 const ASPECT_RATIO : f64 = 16.0 / 9.0;
 const IMAGE_WIDTH : i32 = 400;
+const SAMPLES_PER_PIXEL: i32 = 100;
+const MAX_DEPTH: i32 = 50;
 
 // CAMERA
 const FOCAL_LENGTH : f64 = 1.0;
@@ -41,9 +43,17 @@ fn main() {
     (&mut world).add(Sphere::build_explicit((0.0, 0.0, -1.0), 0.5));
     (&mut world).add(Sphere::build_explicit((0.0, -100.5, -1.0), 100.0));
 
-    // Camera.
-    let mut camera = Camera::build(ASPECT_RATIO, IMAGE_WIDTH, FOCAL_LENGTH, VIEWPORT_HEIGHT);
-    camera.initialize();
 
+    // Camera.
+    let mut camera = Camera::build(
+        ASPECT_RATIO, 
+        IMAGE_WIDTH, 
+        SAMPLES_PER_PIXEL,
+        MAX_DEPTH,
+        FOCAL_LENGTH, 
+        VIEWPORT_HEIGHT
+    );
+
+    camera.initialize();
     camera.render(&world);
 }

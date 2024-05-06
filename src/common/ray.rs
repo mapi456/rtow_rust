@@ -16,8 +16,15 @@ impl Ray {
 
     pub fn build(origin: & Point3, direction: & Vector3) -> Ray {
         Ray {
-            origin: Point3::clone(origin),
-            direction: Vector3::clone(direction)
+            origin: origin.clone(),
+            direction: direction.clone()
+        }
+    }
+
+    pub fn from(origin: Point3, direction: Vector3) -> Ray {
+        Ray {
+            origin: origin,
+            direction: direction
         }
     }
 

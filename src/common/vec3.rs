@@ -1,8 +1,12 @@
 use core::panic;
 use std::ops::{Add, AddAssign, Div, DivAssign, Index, IndexMut, Mul, MulAssign, Neg, Sub, SubAssign};
 
+use rand::{distributions::Distribution, rngs::OsRng};
+
+use super::random::{random_f64, random_f64_standard, standard_normal};
+
 #[derive(Debug)]
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub struct Vector3 {
     data: [f64; 3]
 }
@@ -10,6 +14,7 @@ pub struct Vector3 {
 pub type Point3 = Vector3;
 
 impl Vector3 {
+    // Class functions.
     pub fn new() -> Vector3 {
         Vector3 {
             data: [0.0, 0.0, 0.0]
@@ -22,6 +27,16 @@ impl Vector3 {
         }
     }
 
+    pub fn random(min: f64, max: f64) -> Vector3 {
+        Vector3::build(random_f64(min, max), random_f64(min, max), random_f64(min, max))
+    }
+
+    pub fn random_standard() -> Vector3 {
+        Vector3::build(random_f64_standard(), random_f64_standard(), random_f64_standard())
+    }
+
+
+    // Struct functions.
     pub fn x(& self) -> f64 {
         self.data[0]
     }
@@ -139,6 +154,15 @@ impl Add for Vector3 {
         Self {
             data: [self.x() + other.x(), self.y() + other.y(), self.z() + other.z()]
         }
+    }
+}
+
+
+impl AddAssign<Vector3> for Vector3 {
+    fn add_assign(&mut self, other: Vector3) {
+        self.data[0] += other.x();
+        self.data[1] += other.y();
+        self.data[2] += other.z();
     }
 }
 
@@ -262,4 +286,21 @@ pub fn cross_product(vector1: & Vector3, vector2: & Vector3) -> Vector3 {
 
 pub fn dot_product(vector1: & Vector3, vector2: & Vector3) -> f64 {
     vector1.x() * vector2.x() + vector1.y() * vector2.y() + vector1.z() * vector2.z()
+}
+
+// This might need to be checked if things don't seem properly diffuse!
+pub fn random_unit_vector() -> Vector3 {
+    let x = standard_normal().sample(&mut OsRng);
+    let y = standard_normal().sample(&mut OsRng);
+    let z = standard_normal().sample(&mut OsRng);
+    Vector3::build(x, y, z) / f64::sqrt(x * x + y * y + z * z)
+}
+
+pub fn random_on_hemisphere(normal: & Vector3) -> Vector3 {
+    let candidate_vector = random_unit_vector();
+    if dot_product(&candidate_vector, normal) > 0.0 {
+        candidate_vector
+    } else {
+        -candidate_vector
+    }
 }
