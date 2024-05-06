@@ -1,10 +1,12 @@
-use colour::Colour;
-use ray::Ray;
-use vec3::{unit_vector, Point3, Vector3};
+use common::colour::Colour;
+use common::ray::Ray;
+use common::vec3::{Point3, Vector3};
+use primitive::hittable::{HitRecord, Hittable};
+use primitive::hittable_list::HittableList;
+use primitive::sphere::Sphere;
 
-mod vec3;
-mod colour;
-mod ray;
+mod common;
+mod primitive;
 
 const ASPECT_RATIO : f64 = 16.0 / 9.0;
 
@@ -26,8 +28,16 @@ fn print_ppm_header(ppm_format : &str, image_height : i32, image_width : i32, pp
     println!("{0}{1} {2}\n{3}", ppm_format, image_width, image_height, ppm_max_colour);
 }
 
-fn ray_colour(ray: & Ray) -> Colour{
-    let unit_direction = unit_vector(ray.direction());
+fn ray_colour(ray: & Ray, world: & dyn Hittable) -> Colour{
+    let (hit_anything, hit_rec) = world.hit(ray, 0.0, f64::INFINITY);
+
+    if hit_anything {
+        let normal = hit_rec.expect("ray_colour: Hit reported, but hit record missing.")
+                                .normal.expect("hit record normal missing when requested.");
+        return (Colour::build(1.0, 1.0, 1.0) + normal) * 0.5;
+    }
+
+    let unit_direction = common::vec3::unit_vector(ray.direction());
     let a = 0.5 * (unit_direction.y() + 1.0);
     Colour::build(1.0, 1.0, 1.0) * (1.0 - a) + Colour::build(0.5, 0.7, 1.0) * (a)
 }
@@ -50,6 +60,13 @@ fn main() {
     let pixel00_loc = viewport_upper_left + (&pixel_delta_width + &pixel_delta_height) * 0.5;
     
 
+    // Scene.
+
+    let mut world = HittableList::new();
+
+    (&mut world).add(Sphere::build_explicit((0.0, 0.0, -1.0), 0.5));
+    (&mut world).add(Sphere::build_explicit((0.0, -100.5, -1.0), 100.0));
+
     // Rendering.
     print_ppm_header(PPM_FORMAT, IMAGE_HEIGHT, IMAGE_WIDTH, PPM_MAX_COLOUR);
 
@@ -60,10 +77,10 @@ fn main() {
             let pixel_center = &pixel00_loc + &(&pixel_delta_width * &(x as f64)) + (&pixel_delta_height * &(y as f64));
             let ray_direction = &pixel_center - &camera_center;
 
-            let r = Ray::build(&pixel_center, &ray_direction);
+            let r = Ray::build(&camera_center, &ray_direction);
 
-            let pixel_colour = ray_colour(&r);
-            colour::write_colour(&pixel_colour);
+            let pixel_colour = ray_colour(&r, & world);
+            common::colour::write_colour(&pixel_colour);
         }
     }
 

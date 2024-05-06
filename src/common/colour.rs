@@ -1,5 +1,5 @@
 use crate::TO_COLOUR;
-use crate::vec3::Vector3;
+use super::vec3::Vector3;
 
 pub type Colour = Vector3;
 

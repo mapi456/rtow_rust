@@ -44,13 +44,6 @@ impl Vector3 {
 
 }
 
-// impl Clone for Vector3 {
-//     fn clone(&self) -> Self {
-//         Self {
-//             data: [self.x(), self.y(), self.z()]
-//         }
-//     }
-// }
 
 // Index Operators
 
@@ -117,6 +110,15 @@ impl Neg for Vector3 {
     }
 }
 
+impl Neg for & Vector3 {
+    type Output = Vector3;
+    
+    fn neg(self) -> Vector3 {
+        Vector3 {
+            data: [-self.x(), -self.y(), -self.z()]
+        }
+    }
+}
 
 // Addition Operators
 
