@@ -3,6 +3,7 @@ use std::f64::consts::PI;
 pub mod colour;
 pub mod ray;
 pub mod vec3;
+pub mod mat3;
 pub mod interval;
 pub mod random;
 

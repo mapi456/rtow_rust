@@ -1,31 +1,41 @@
 
-use crate::common::{interval::Interval, ray::Ray, vec3::{dot_product, Point3}};
+use std::rc::Rc;
+
+use crate::common::interval::Interval; 
+use crate::common::ray::Ray;
+use crate::common::vec3::{ dot_product, Point3 };
+
+use crate::materials::Material;
 
 use super::hittable::{Hittable, HitRecord};
 
 pub struct Sphere {
     center: Point3,
+    material: Rc<Box<dyn Material>>,
     radius: f64
 }
 
 impl Sphere {
-    pub fn new() -> Sphere {
+    pub fn new(material: & Rc<Box<dyn Material>>) -> Sphere {
         Sphere {
             center: Point3::new(),
+            material: Rc::clone(material),
             radius: 1.0,
         }
     }
 
-    pub fn build(center: & Point3, radius: & f64) -> Sphere{
+    pub fn build(center: & Point3, radius: & f64, material: & Rc<Box<dyn Material>>) -> Sphere{
         Sphere {
             center: Point3::clone(center),
+            material: Rc::clone(material),
             radius: f64::clone(radius)
         }
     }
     
-    pub fn build_explicit(center: (f64, f64, f64), radius: f64) -> Sphere{
+    pub fn build_explicit(center: (f64, f64, f64), radius: f64, material: & Rc<Box<dyn Material>>) -> Sphere{
         Sphere {
             center: Point3::build(center.0, center.1, center.2),
+            material: Rc::clone(material),
             radius: radius
         }
     }
@@ -58,7 +68,8 @@ impl Hittable for Sphere {
         let mut hit_record = HitRecord{
             t: root,
             normal: None, 
-            point: p, 
+            material: Rc::clone(&self.material),
+            point: p,
             front_face: None
         };
 

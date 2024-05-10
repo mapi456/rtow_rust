@@ -1,10 +1,15 @@
-use crate::common::{interval::Interval, ray::Ray, vec3::{dot_product, Point3, Vector3}};
+use std::rc::Rc;
 
-// static mut BACKFACES: i32 = 0;
+use crate::common::interval::Interval; 
+use crate::common::ray::Ray;
+use crate::common::vec3::{ dot_product, Point3, Vector3 };
+
+use crate::materials::Material;
 
 pub struct HitRecord {
     pub point: Point3,
     pub normal: Option<Vector3>,
+    pub material: Rc<Box<dyn Material>>,
     pub t: f64,
     pub front_face: Option<bool>
 }
@@ -18,6 +23,14 @@ impl HitRecord {
         self.point
     }
 
+    pub fn material<'a>(&self) -> Rc<Box<dyn Material>>{
+        Rc::clone(&self.material)
+    }
+
+    pub fn front_face(&self) -> bool {
+        self.front_face.clone().expect("HitRecord; front_face requested, but not found.")
+    }
+
     pub fn set_face_normal(&mut self, ray: & Ray, outward_normal: & Vector3) {
         // TODO: assert that outward_normal is unit length (within margin)
 
@@ -25,11 +38,6 @@ impl HitRecord {
         if front {
             self.normal = Some(outward_normal.clone());
         } else {
-            unsafe {
-                // BACKFACES += 1;
-                // eprintln!("back face #{} has been detected, normal: {:?}", BACKFACES, -outward_normal);
-                // eprintln!("ray direction: {:?}, outward_normal: {:?}, results in dot product: {}", ray.direction(), outward_normal, dot_product(ray.direction(), outward_normal));
-            }
             self.normal = Some(-outward_normal);
         }
         self.front_face = Some(front);

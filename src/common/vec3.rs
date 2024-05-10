@@ -1,9 +1,9 @@
 use core::panic;
-use std::ops::{Add, AddAssign, Div, DivAssign, Index, IndexMut, Mul, MulAssign, Neg, Sub, SubAssign};
+use std::ops::{ Add, AddAssign, Div, DivAssign, Index, IndexMut, Mul, MulAssign, Neg, Sub, SubAssign };
 
-use rand::{distributions::Distribution, rngs::OsRng};
+use rand::{ distributions::Distribution, rngs::OsRng };
 
-use super::random::{random_f64, random_f64_standard, standard_normal};
+use super::random::{ random_f64, random_f64_standard, standard_normal };
 
 #[derive(Debug)]
 #[derive(Clone, Copy)]
@@ -12,6 +12,8 @@ pub struct Vector3 {
 }
 
 pub type Point3 = Vector3;
+
+const ZERO_CUTOFF: f64 = 1e-8;
 
 impl Vector3 {
     // Class functions.
@@ -57,6 +59,11 @@ impl Vector3 {
         f64::sqrt(self.length_squared())
     }
 
+    pub fn near_zero(& self) -> bool {
+        let s = ZERO_CUTOFF;
+        f64::abs(self.data[0]) < s && f64::abs(self.data[1]) < s && f64::abs(self.data[2]) < s
+    }
+
 }
 
 
@@ -67,7 +74,7 @@ impl Index<usize> for Vector3 {
 
     fn index(&self, index: usize) -> &f64 {
         match index {
-            1..=3 => self.data.get(index)
+            0..=2 => self.data.get(index)
                 .expect("Vector3 array length too small."),
             _ => panic!()
         }
@@ -77,7 +84,7 @@ impl Index<usize> for Vector3 {
 impl IndexMut<usize> for Vector3 {
     fn index_mut(&mut self, index: usize) -> &mut f64 {
         match index {
-            1..=3 => self.data.get_mut(index)
+            0..=2 => self.data.get_mut(index)
                 .expect("Vector3 array length too small."),
             _ => panic!()
         }
@@ -206,6 +213,16 @@ impl Mul<& f64> for & Vector3 {
     }
 }
 
+impl Mul<f64> for & Vector3 {
+    type Output = Vector3;
+
+    fn mul(self, other: f64) -> Vector3 {
+        Vector3 {
+            data: [self.x() * other, self.y() * other, self.z() * other]
+        }
+    }
+}
+
 impl Mul<f64> for Vector3 {
     type Output = Self;
 
@@ -217,6 +234,16 @@ impl Mul<f64> for Vector3 {
 }
 
 impl Mul<& Vector3> for & f64 {
+    type Output = Vector3;
+
+    fn mul(self, other: & Vector3) -> Vector3 {
+        Vector3 {
+            data: [other.x() * self, other.y() * self, other.z() * self]
+        }
+    }
+}
+
+impl Mul<& Vector3> for f64 {
     type Output = Vector3;
 
     fn mul(self, other: & Vector3) -> Vector3 {
@@ -268,6 +295,7 @@ impl DivAssign<f64> for Vector3 {
     }
 }
 
+
 // Vector Operators
 
 pub fn unit_vector(vector: & Vector3) -> Vector3 {
@@ -303,4 +331,15 @@ pub fn random_on_hemisphere(normal: & Vector3) -> Vector3 {
     } else {
         -candidate_vector
     }
+}
+
+pub fn reflect(vector: & Vector3, normal: & Vector3) -> Vector3 {
+    vector - &(normal * &(dot_product(vector, normal) * 2.0))
+}
+
+pub fn refract(vector: & Vector3, normal: & Vector3, refractive_index_ratio: f64) -> Vector3 {
+    let cos_theta = dot_product(&-vector, normal).min(1.0);
+    let r_out_perp = (vector + &(normal * cos_theta)) * refractive_index_ratio;
+    let r_out_parallel = (-f64::sqrt(1.0 - r_out_perp.length_squared())) * normal;
+    r_out_perp + r_out_parallel
 }

@@ -1,6 +1,5 @@
-use statrs::{distribution::Normal, StatsError};
+use statrs::distribution::Normal;
 use rand::distributions::{Distribution, Uniform};
-use rand::rngs::OsRng;
 
 pub enum Distributions {
     NORMAL(f64, f64),

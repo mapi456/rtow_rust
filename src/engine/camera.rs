@@ -1,12 +1,11 @@
-use rand::distributions::Distribution;
-
-use crate::common::random::{random_f64_standard, sample, Distributions};
-use crate::common::vec3::{random_on_hemisphere, random_unit_vector, unit_vector, Point3, Vector3};
-use crate::common::colour::{Colour, write_colour};
+use crate::common::mat3::Matrix3;
+use crate::common::random::{ sample, Distributions };
+use crate::common::vec3::{ cross_product, unit_vector, Point3, Vector3 };
+use crate::common::colour::{ Colour, write_colour };
 use crate::common::interval::Interval;
 use crate::common::ray::Ray;
+use crate::common::{ degrees_to_radians, RAY_MINIMUM_DISTANCE_BEFORE_HIT };
 
-use crate::common::RAY_MINIMUM_DISTANCE_BEFORE_HIT;
 use crate::primitive::hittable::Hittable;
 
 const PPM_FORMAT : &str = "P3\n";
@@ -26,10 +25,14 @@ fn ray_colour(ray: & Ray, depth_remaining: i32, world: & impl Hittable) -> Colou
     if hit_anything {
         let hit_rec = hit_rec.expect("camera::ray_colour: hit registered, but no hit record.");
 
-        let direction = hit_rec.normal() + random_unit_vector();
-        return ray_colour(&Ray::build(&hit_rec.point(), &direction), depth_remaining - 1, world) * 0.5;
-        
-        // return (normal + Colour::build(1.0, 1.0, 1.0)) * 0.5;
+        let (scattered, attenuation, scattered_ray) = 
+            hit_rec.material.scatter(ray, &hit_rec);
+
+        if scattered {
+            return attenuation * ray_colour(&scattered_ray, depth_remaining - 1, world);
+        }
+
+        return Colour::build(0.0, 0.0, 0.0);
     }
 
     let unit_direction = unit_vector(ray.direction());
@@ -56,20 +59,26 @@ fn print_ppm_header(ppm_format : &str, image_height : i32, image_width : i32, pp
 }
 
 pub struct Camera {
+    // configurable attributes
     aspect_ratio: f64,
     image_width: i32,
     samples_per_pixel: i32,
     max_depth: i32,
 
-    focal_length: f64,
-    viewport_height: f64,
+    vertical_fov_degrees: f64,
+    lookfrom: Point3,
+    lookat: Point3,
+    vup: Vector3,
 
+    // computed attributes
     image_height: Option<i32>,
+    viewport_height: Option<f64>,
     pixel_samples_scale: Option<f64>,
     center: Option<Point3>,
     pixel00_loc: Option<Point3>,
     pixel_delta_width: Option<Vector3>,
     pixel_delta_height: Option<Vector3>,
+    frame_basis: Option<Matrix3>,
 
     initialized: bool
 }
@@ -81,35 +90,52 @@ impl Camera {
             image_width: 100,
             samples_per_pixel: 10,
             max_depth: 10,
-            focal_length: 1.0,
-            viewport_height: 2.0,
+            vertical_fov_degrees: 90.0,
+            lookfrom: Point3::build(0.0, 0.0, 0.0),
+            lookat: Point3::build(0.0, 0.0, -1.0),
+            vup: Vector3::build(0.0, -1.0, 0.0),
 
             image_height: None,
+            viewport_height: None,
             pixel_samples_scale: None,
             center: None,
             pixel00_loc: None,
             pixel_delta_width: None,
             pixel_delta_height: None,
+            frame_basis: None,
 
             initialized: false
         }
     }
 
-    pub fn build(aspect_ratio: f64, image_width: i32, samples_per_pixel: i32, max_depth: i32, focal_length: f64, viewport_height: f64) -> Camera {
+    pub fn build(
+        aspect_ratio: f64, 
+        image_width: i32, 
+        samples_per_pixel: i32, 
+        max_depth: i32, 
+        vertical_fov_degrees: f64, 
+        lookfrom: Point3,
+        lookat: Point3,
+        vup: Vector3
+    ) -> Camera {
         Camera {
-            aspect_ratio: aspect_ratio,
-            image_width: image_width,
-            samples_per_pixel: samples_per_pixel,
-            max_depth: max_depth,
-            focal_length: focal_length,
-            viewport_height: viewport_height,
+            aspect_ratio,
+            image_width,
+            samples_per_pixel,
+            max_depth,
+            vertical_fov_degrees,
+            lookfrom,
+            lookat,
+            vup,
 
             image_height: None,
+            viewport_height: None,
             pixel_samples_scale: None,
             center: None,
             pixel00_loc: None,
             pixel_delta_width: None,
             pixel_delta_height: None,
+            frame_basis: None,
             
             initialized: false
         }
@@ -140,6 +166,10 @@ impl Camera {
     fn pixel_delta_height(&self) -> Vector3 {
         self.pixel_delta_height.clone().expect("Camera: pixel_delta_height needed, but not initialized.")
     }
+
+    fn frame_basis(&self) -> Matrix3 {
+        self.frame_basis.clone().expect("Camera: frame_basis needed, but not initialized")
+    }
     
     fn ray_to_pixel(&self, x: i32, y: i32) -> Ray {
         let offset = sample_square();
@@ -165,14 +195,23 @@ impl Camera {
 
         self.pixel_samples_scale = Some(1.0 / self.samples_per_pixel as f64);
 
-        self.center = Some(Point3::new());
+        self.center = Some(self.lookfrom);
 
         // Viewport.
-        let viewport_width = self.viewport_height * (self.image_width as f64 / projected_height as f64);
+        let focal_length = (self.lookat - self.lookfrom).length();
+        let theta = degrees_to_radians(self.vertical_fov_degrees);
+        let h = (theta / 2.0).tan();
+        self.viewport_height = Some(2.0 * h * focal_length);
+        let viewport_width = self.viewport_height.expect("Camera: viewport height was just set but no longer exists.") * (self.image_width as f64 / projected_height as f64);
+
+        // Calculate camera coordinate frame basis vectors.
+        let w = unit_vector(&(self.lookfrom - self.lookat));
+        let u = unit_vector(&cross_product(&self.vup, &w));
+        self.frame_basis = Some(Matrix3::build(&u, &cross_product(&w, &u), &w));
 
         // Viewport edge vectors.
-        let viewport_width_vector = Vector3::build(viewport_width, 0.0, 0.0);
-        let viewport_height_vector = Vector3::build(0.0, -self.viewport_height, 0.0);
+        let viewport_width_vector = u * viewport_width;
+        let viewport_height_vector = -self.frame_basis().v() * self.viewport_height.expect("msg");
 
         // Viewport pixel delta vectors.
         self.pixel_delta_width = Some( &viewport_width_vector / &(self.image_width as f64) );
@@ -181,7 +220,7 @@ impl Camera {
         // Pixel (0, 0) location.
         let viewport_upper_left = 
             self.center() 
-                - Vector3::build(0.0, 0.0, self.focal_length)
+                - w * focal_length
                 - viewport_width_vector / 2.0
                 - viewport_height_vector / 2.0;
         self.pixel00_loc = Some(viewport_upper_left + (self.pixel_delta_width() + self.pixel_delta_height()) * 0.5);
