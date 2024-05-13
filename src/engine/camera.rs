@@ -1,6 +1,6 @@
 use crate::common::mat3::Matrix3;
 use crate::common::random::{ sample, Distributions };
-use crate::common::vec3::{ cross_product, unit_vector, Point3, Vector3 };
+use crate::common::vec3::{ cross_product, random_in_unit_disk, unit_vector, Point3, Vector3 };
 use crate::common::colour::{ Colour, write_colour };
 use crate::common::interval::Interval;
 use crate::common::ray::Ray;
@@ -70,6 +70,9 @@ pub struct Camera {
     lookat: Point3,
     vup: Vector3,
 
+    defocus_angle: f64,
+    focus_dist: f64,
+
     // computed attributes
     image_height: Option<i32>,
     viewport_height: Option<f64>,
@@ -79,6 +82,8 @@ pub struct Camera {
     pixel_delta_width: Option<Vector3>,
     pixel_delta_height: Option<Vector3>,
     frame_basis: Option<Matrix3>,
+    defocus_disk_u: Option<Vector3>,
+    defocus_disk_v: Option<Vector3>,
 
     initialized: bool
 }
@@ -94,6 +99,8 @@ impl Camera {
             lookfrom: Point3::build(0.0, 0.0, 0.0),
             lookat: Point3::build(0.0, 0.0, -1.0),
             vup: Vector3::build(0.0, -1.0, 0.0),
+            defocus_angle: 0.0,
+            focus_dist: 10.0,
 
             image_height: None,
             viewport_height: None,
@@ -103,6 +110,8 @@ impl Camera {
             pixel_delta_width: None,
             pixel_delta_height: None,
             frame_basis: None,
+            defocus_disk_u: None,
+            defocus_disk_v: None,
 
             initialized: false
         }
@@ -116,7 +125,9 @@ impl Camera {
         vertical_fov_degrees: f64, 
         lookfrom: Point3,
         lookat: Point3,
-        vup: Vector3
+        vup: Vector3,
+        defocus_angle: f64,
+        focus_dist: f64
     ) -> Camera {
         Camera {
             aspect_ratio,
@@ -127,6 +138,8 @@ impl Camera {
             lookfrom,
             lookat,
             vup,
+            defocus_angle,
+            focus_dist,
 
             image_height: None,
             viewport_height: None,
@@ -136,6 +149,8 @@ impl Camera {
             pixel_delta_width: None,
             pixel_delta_height: None,
             frame_basis: None,
+            defocus_disk_u: None,
+            defocus_disk_v: None,
             
             initialized: false
         }
@@ -170,6 +185,19 @@ impl Camera {
     fn frame_basis(&self) -> Matrix3 {
         self.frame_basis.clone().expect("Camera: frame_basis needed, but not initialized")
     }
+
+    fn defocus_disk_u(&self) -> Vector3 {
+        self.defocus_disk_u.clone().expect("Camera: defocus_disk_u needed, but not initialized")
+    }
+
+    fn defocus_disk_v(&self) -> Vector3 {
+        self.defocus_disk_v.clone().expect("Camera: defocus_disk_v needed, but not initialized")
+    }
+
+    fn defocus_disk_sample(&self) -> Point3 {
+        let p = random_in_unit_disk();
+        self.center() + (self.defocus_disk_u() * p[0]) + (self.defocus_disk_v() * p[1])
+    }
     
     fn ray_to_pixel(&self, x: i32, y: i32) -> Ray {
         let offset = sample_square();
@@ -178,7 +206,7 @@ impl Camera {
             (self.pixel_delta_width() * (x as f64 + offset.x()))+ 
             (self.pixel_delta_height() * (y as f64 + offset.y()));
 
-        let ray_origin = self.center();
+        let ray_origin = if self.defocus_angle <= 0.0 { self.center() } else { self.defocus_disk_sample() };
         let ray_direction = &pixel_sample - &ray_origin;
 
         Ray::from(ray_origin, ray_direction)
@@ -198,16 +226,16 @@ impl Camera {
         self.center = Some(self.lookfrom);
 
         // Viewport.
-        let focal_length = (self.lookat - self.lookfrom).length();
         let theta = degrees_to_radians(self.vertical_fov_degrees);
         let h = (theta / 2.0).tan();
-        self.viewport_height = Some(2.0 * h * focal_length);
+        self.viewport_height = Some(2.0 * h * self.focus_dist);
         let viewport_width = self.viewport_height.expect("Camera: viewport height was just set but no longer exists.") * (self.image_width as f64 / projected_height as f64);
 
         // Calculate camera coordinate frame basis vectors.
         let w = unit_vector(&(self.lookfrom - self.lookat));
         let u = unit_vector(&cross_product(&self.vup, &w));
-        self.frame_basis = Some(Matrix3::build(&u, &cross_product(&w, &u), &w));
+        let v = cross_product(&w, &u);
+        self.frame_basis = Some(Matrix3::build(&u, &v, &w));
 
         // Viewport edge vectors.
         let viewport_width_vector = u * viewport_width;
@@ -219,11 +247,15 @@ impl Camera {
 
         // Pixel (0, 0) location.
         let viewport_upper_left = 
-            self.center() 
-                - w * focal_length
+            self.center()  
+                - w * self.focus_dist
                 - viewport_width_vector / 2.0
                 - viewport_height_vector / 2.0;
         self.pixel00_loc = Some(viewport_upper_left + (self.pixel_delta_width() + self.pixel_delta_height()) * 0.5);
+
+        let defocus_radius = self.focus_dist * degrees_to_radians(self.defocus_angle / 2.0).tan();
+        self.defocus_disk_u = Some(u * defocus_radius);
+        self.defocus_disk_v = Some(v * defocus_radius);
 
         self.initialized = true;
     }

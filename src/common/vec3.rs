@@ -316,12 +316,32 @@ pub fn dot_product(vector1: & Vector3, vector2: & Vector3) -> f64 {
     vector1.x() * vector2.x() + vector1.y() * vector2.y() + vector1.z() * vector2.z()
 }
 
+pub fn random_in_unit_sphere() -> Vector3 {
+    loop {
+        let p = Vector3::random(-1.0, 1.0);
+        if p.length_squared() < 1.0 { return p; }
+    }
+}
+
 // This might need to be checked if things don't seem properly diffuse!
 pub fn random_unit_vector() -> Vector3 {
-    let x = standard_normal().sample(&mut OsRng);
-    let y = standard_normal().sample(&mut OsRng);
-    let z = standard_normal().sample(&mut OsRng);
-    Vector3::build(x, y, z) / f64::sqrt(x * x + y * y + z * z)
+    // let x = standard_normal().sample(&mut OsRng);
+    // let y = standard_normal().sample(&mut OsRng);
+    // let z = standard_normal().sample(&mut OsRng);
+    // Vector3::build(x, y, z) / f64::sqrt(x * x + y * y + z * z)
+    unit_vector(&random_in_unit_sphere())
+}
+
+// This might need to be checked if things don't seem properly diffuse!
+pub fn random_in_unit_disk() -> Vector3 {
+    // let x = standard_normal().sample(&mut OsRng);
+    // let y = standard_normal().sample(&mut OsRng);
+    // let z = 0.0;
+    // Vector3::build(x, y, z) / f64::sqrt(x * x + y * y)
+    loop {
+        let p = Vector3::build(random_f64(-1.0, 1.0), random_f64(-1.0, 1.0), 0.0);
+        if p.length_squared() < 1.0 { return p  ; }
+    }
 }
 
 pub fn random_on_hemisphere(normal: & Vector3) -> Vector3 {
